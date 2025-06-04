@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Water Sort Puzzle - Levels</title>
+<style>
+  body {
+    margin: 0; padding: 0;
+    font-family: Arial, sans-serif;
+    background: #001f4d; /* dark blue */
+    color: white;
+    display: flex; flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    user-select: none;
+  }
+  h1 {
+    margin: 20px 0;
+  }
+  #play{
+    background-color: chocolate;
+    border-radius: 10px;
+    font-size: 25px;
+    transition: 0.4s;
+  }
+  #play:hover{
+    background-color: aliceblue;
+  }
+   #pause{
+    background-color: chocolate;
+    border-radius: 10px;
+    font-size: 25px;
+    transition: 0.4s;
+    text-align: center;
+  }
+  #pause:hover{
+    background-color: aliceblue;
+  }
+  #game {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 90vw;
+  }
+  .tube {
+    width: 60px;
+    height: 200px;
+    border: 3px solid #444;
+    border-radius: 12px;
+    background: white;
+    display: flex;
+    flex-direction: column-reverse;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.3s;
+  }
+  .tube.selected {
+    border-color: orange;
+  }
+  .layer {
+    flex: 1;
+    width: 100%;
+    transition: background-color 0.3s;
+  }
+  #winPanel {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    color: lightgreen;
+    font-size: 2em;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 999;
+  }
+  #winPanel button {
+    margin-top: 20px;
+    padding: 10px 25px;
+    font-size: 1.2em;
+    cursor: pointer;
+    border-radius: 8px;
+    border: none;
+    background: #06b;
+    color: white;
+    transition: background-color 0.3s;
+  }
+  #winPanel button:hover {
+    background: #039;
+  }
+  #levelDisplay {
+    margin-bottom: 10px;
+    font-size: 1.2em;
+  }
+</style>
+</head>
+<body>
+  <div>
+   <button id="play" onclick="playPause()">Music</button>
+   &nbsp;
+   &nbsp;
+   <script>
+        let play= document.getElementById("play");
+        function playMusic() {
+         let audio = new Audio("𝙎𝘼𝙔𝙁𝘼𝙇𝙎𝙀, 𝙔𝘽 𝙒𝘼𝙎𝙂' 𝙊𝙊𝘿 & 𝘼𝙍𝙄𝙄𝙎 - .mp3");
+         audio.play()
+
+        }
+        play.addEventListener("click", playMusic)
+   </script>
+  </div>
+
+  <h1>Water Sort Puzzle</h1>
+<div id="levelDisplay">Level: 1</div>
+<div id="game"></div>
+
+<div id="winPanel">
+  <div>You won Level <span id="winLevel"></span>!</div>
+  <button id="nextLevelBtn">Next Level</button>
+</div>
+
+<!-- Audio element for click sound -->
+<audio id="clickSound" src="https://www.soundjay.com/button/sounds/button-16.mp3" preload="auto"></audio>
+
+<script>
+  const MAX_LEVEL = 100;
+  const TUBE_CAPACITY = 4;
+  const ALL_COLORS = ["red", "blue", "green", "yellow", "orange", "purple", "cyan", "magenta", "lime", "brown"];
+
+  const game = document.getElementById('game');
+  const winPanel = document.getElementById('winPanel');
+  const nextLevelBtn = document.getElementById('nextLevelBtn');
+  const winLevelSpan = document.getElementById('winLevel');
+  const levelDisplay = document.getElementById('levelDisplay');
+  const clickSound = document.getElementById('clickSound');
+
+  let tubes = [];
+  let selectedTubeIndex = null;
+  let currentLevel = 1;
+
+  function createTubes(level) {
+    tubes = [];
+    game.innerHTML = "";
+
+    // Determine number of colors by level, max 10 colors
+    const numColors = Math.min(ALL_COLORS.length, Math.min(level + 2, 10)); 
+    const colors = ALL_COLORS.slice(0, numColors);
+
+    // Prepare colors: each repeated 4 times (tube capacity)
+    let colorUnits = [];
+    colors.forEach(color => {
+      for(let i=0; i<TUBE_CAPACITY; i++){
+        colorUnits.push(color);
+      }
+    });
+
+    // Shuffle colors
+    colorUnits = shuffle(colorUnits);
+
+    // Number of tubes = colors + 2 (empty tubes)
+    const tubeCount = colors.length + 2;
+
+    for(let i=0; i < tubeCount; i++){
+      let layers = [];
+      if(i < colors.length){
+        layers = colorUnits.slice(i * TUBE_CAPACITY, (i+1) * TUBE_CAPACITY);
+      }
+      createTube(layers);
+    }
+
+    renderAllTubes();
+    levelDisplay.textContent = `Level: ${currentLevel}`;
+  }
+
+  function createTube(layers) {
+    const tubeEl = document.createElement('div');
+    tubeEl.classList.add('tube');
+    game.appendChild(tubeEl);
+
+    const tube = { element: tubeEl, layers: layers.slice() };
+    tubeEl.addEventListener('click', () => {
+      playClickSound();
+      handleTubeClick(tubes.indexOf(tube));
+    });
+    tubes.push(tube);
+  }
+
+  function renderTube(tube) {
+    tube.element.innerHTML = '';
+    for(let i=0; i < TUBE_CAPACITY; i++){
+      const layer = document.createElement('div');
+      layer.classList.add('layer');
+      layer.style.backgroundColor = tube.layers[i] || 'white';
+      tube.element.appendChild(layer);
+    }
+    tube.element.classList.toggle('selected', tubes.indexOf(tube) === selectedTubeIndex);
+  }
+
+  function renderAllTubes() {
+    tubes.forEach(renderTube);
+  }
+
+  function handleTubeClick(index) {
+    if(selectedTubeIndex === null) {
+      if(tubes[index].layers.length === 0) return; // can't select empty tube
+      selectedTubeIndex = index;
+    } else if(selectedTubeIndex === index) {
+      selectedTubeIndex = null; // deselect
+    } else {
+      // Try to pour from selectedTubeIndex to index
+      transferWater(selectedTubeIndex, index);
+      selectedTubeIndex = null;
+    }
+    renderAllTubes();
+  }
+
+  function transferWater(fromIndex, toIndex) {
+    const fromTube = tubes[fromIndex];
+    const toTube = tubes[toIndex];
+
+    if(fromTube.layers.length === 0) return;
+
+    const fromColor = fromTube.layers[fromTube.layers.length - 1];
+
+    if(toTube.layers.length === TUBE_CAPACITY) return;
+    if(toTube.layers.length > 0 && toTube.layers[toTube.layers.length - 1] !== fromColor) return;
+
+    // Count how many layers can be transferred
+    let count = 0;
+    for(let i = fromTube.layers.length - 1; i >= 0; i--) {
+      if(fromTube.layers[i] === fromColor) count++;
+      else break;
+    }
+
+    const space = TUBE_CAPACITY - toTube.layers.length;
+    const transferCount = Math.min(count, space);
+
+    for(let i=0; i<transferCount; i++){
+      fromTube.layers.pop();
+      toTube.layers.push(fromColor);
+    }
+
+    renderAllTubes();
+    checkWin();
+  }
+
+  function checkWin() {
+    const won = tubes.every(tube => {
+      if(tube.layers.length === 0) return true;
+      if(tube.layers.length !== TUBE_CAPACITY) return false;
+      return tube.layers.every(c => c === tube.layers[0]);
+    });
+
+    if(won){
+      winLevelSpan.textContent = currentLevel;
+      winPanel.style.display = 'flex';
+    }
+  }
+
+  nextLevelBtn.addEventListener('click', () => {
+    winPanel.style.display = 'none';
+    if(currentLevel < MAX_LEVEL){
+      currentLevel++;
+      createTubes(currentLevel);
+      selectedTubeIndex = null;
+    } else {
+      alert("You've completed all levels! 🎉");
+    }
+  });
+
+  function shuffle(array) {
+    for(let i = array.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  function playClickSound() {
+    clickSound.currentTime = 0;
+    clickSound.play();
+  }
+
+  // Start first level
+  createTubes(currentLevel);
+</script>
+
+</body>
+</html>
